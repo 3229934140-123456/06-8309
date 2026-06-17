@@ -7,7 +7,7 @@ import { JWT_SECRET } from '../middleware/auth.js'
 const router = Router()
 
 router.post('/register', (req: Request, res: Response): void => {
-  const { phone, password, name } = req.body
+  const { phone, password, name, bloodType, allergies, chronicDiseases, emergencyContact, emergencyPhone } = req.body
   if (!phone || !password || !name) {
     res.status(400).json({ success: false, error: '请填写完整信息' })
     return
@@ -27,9 +27,19 @@ router.post('/register', (req: Request, res: Response): void => {
     'INSERT INTO health_profiles (patient_id, blood_type, allergies, chronic_diseases, emergency_contact, emergency_phone) VALUES (?, ?, ?, ?, ?, ?)'
   )
 
+  const allergiesArray = allergies ? allergies.split(/[,，]/).map((s: string) => s.trim()).filter(Boolean) : []
+  const chronicArray = chronicDiseases ? chronicDiseases.split(/[,，]/).map((s: string) => s.trim()).filter(Boolean) : []
+
   const transaction = db.transaction(() => {
     const result = insertUser.run(phone, hashedPassword, name, 'patient')
-    insertHealthProfile.run(result.lastInsertRowid, '', '[]', '[]', '', '')
+    insertHealthProfile.run(
+      result.lastInsertRowid,
+      bloodType || '',
+      JSON.stringify(allergiesArray),
+      JSON.stringify(chronicArray),
+      emergencyContact || '',
+      emergencyPhone || ''
+    )
     return result.lastInsertRowid
   })
 

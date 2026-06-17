@@ -8,7 +8,13 @@ interface AuthState {
   isAuthenticated: boolean
   isLoading: boolean
   login: (phone: string, password: string, role: UserRole) => Promise<void>
-  register: (phone: string, password: string, name: string) => Promise<void>
+  register: (phone: string, password: string, name: string, healthProfile?: {
+    bloodType: string
+    allergies: string
+    chronicDiseases: string
+    emergencyContact: string
+    emergencyPhone: string
+  }) => Promise<void>
   logout: () => void
   loadUser: () => void
 }
@@ -31,10 +37,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  register: async (phone, password, name) => {
+  register: async (phone, password, name, healthProfile) => {
     set({ isLoading: true })
     try {
-      const data = await api.post<AuthResponse>('/auth/register', { phone, password, name })
+      const data = await api.post<AuthResponse>('/auth/register', { phone, password, name, ...healthProfile })
       localStorage.setItem('token', data.token)
       localStorage.setItem('user', JSON.stringify(data.user))
       set({ user: data.user, token: data.token, isAuthenticated: true })

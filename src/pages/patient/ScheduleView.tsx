@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { ArrowLeft, CalendarDays, Clock, CheckCircle, AlertTriangle } from 'lucide-react'
 import { api } from '@/utils/api'
 import type { Doctor, Department, ScheduleSlot } from '@shared/types'
+import { useNotificationStore } from '@/store/notificationStore'
 
 const dayLabels = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
 const statusLabels: Record<number, string> = { 1: '周一', 2: '周二', 3: '周三', 4: '周四', 5: '周五', 6: '周六', 7: '周日' }
@@ -32,28 +33,31 @@ export default function ScheduleView() {
   const [confirmSlot, setConfirmSlot] = useState<ScheduleSlot | null>(null)
   const [booking, setBooking] = useState(false)
   const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
+  const { fetchNotifications } = useNotificationStore()
 
   const next7Days = useMemo(() => getNext7Days(), [])
 
   useEffect(() => {
     Promise.all([
-      api.get<Department[]>('/departments'),
+      api.get<any>(`/doctors/${doctorId}`),
       api.get<ScheduleSlot[]>(`/doctors/${doctorId}/schedule`),
-    ]).then(([depts, slots]) => {
+    ]).then(([doctorInfo, slots]) => {
       setSchedule(slots)
-      for (const dept of depts) {
-        const found = (dept as Department & { doctors?: Doctor[] }).doctors?.find(
-          (d) => d.id === Number(doctorId)
-        )
-        if (found) {
-          setDoctor(found)
-          setDepartment(dept)
-          break
-        }
-      }
-      if (!doctor) {
-        setDoctor({ id: Number(doctorId), user_id: 0, department_id: depts[0]?.id || 0, title: '', specialty: '', avatar: '' })
-      }
+      setDoctor({
+        id: doctorInfo.id,
+        user_id: doctorInfo.user_id,
+        department_id: doctorInfo.department_id,
+        title: doctorInfo.title,
+        specialty: doctorInfo.specialty,
+        avatar: doctorInfo.avatar,
+        user: { id: doctorInfo.user_id, phone: doctorInfo.phone, name: doctorInfo.name, role: 'doctor', created_at: '' } as any,
+      } as Doctor)
+      setDepartment({
+        id: doctorInfo.department_id,
+        name: doctorInfo.department_name,
+        description: '',
+        icon: '',
+      })
     }).finally(() => setLoading(false))
   }, [doctorId])
 
@@ -86,13 +90,10 @@ export default function ScheduleView() {
       })
       setToast({ type: 'success', msg: '预约成功！' })
       setConfirmSlot(null)
+      fetchNotifications()
     } catch (err) {
       const msg = err instanceof Error ? err.message : '预约失败'
-      if (msg.includes('ban') || msg.includes('爽约') || msg.includes('禁止')) {
-        setToast({ type: 'error', msg: '您因多次爽约已被禁止预约，请联系前台' })
-      } else {
-        setToast({ type: 'error', msg })
-      }
+      setToast({ type: 'error', msg })
     } finally {
       setBooking(false)
     }

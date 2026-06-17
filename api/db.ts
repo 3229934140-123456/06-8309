@@ -18,7 +18,10 @@ if (fs.existsSync(dbPath)) {
   rawDb = new SQL.Database()
 }
 
+let inTransaction = false
+
 function saveDb() {
+  if (inTransaction) return
   const data = rawDb.export()
   const buffer = Buffer.from(data)
   fs.writeFileSync(dbPath, buffer)
@@ -84,14 +87,17 @@ class DatabaseWrapper {
 
   transaction<T extends (...args: any[]) => any>(fn: T): T {
     return ((...args: any[]) => {
+      inTransaction = true
       rawDb.run('BEGIN TRANSACTION')
       try {
         const result = fn(...args)
         rawDb.run('COMMIT')
+        inTransaction = false
         saveDb()
         return result
       } catch (err) {
         try { rawDb.run('ROLLBACK') } catch {}
+        inTransaction = false
         throw err
       }
     }) as any as T

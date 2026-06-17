@@ -34,7 +34,11 @@ router.post('/batch', (req: Request, res: Response): void => {
   const transaction = db.transaction(() => {
     deleteSlots.run(doctorId)
     for (const slot of slots) {
-      insertSlot.run(doctorId, slot.day_of_week, slot.start_time, slot.end_time, slot.max_appointments || 1)
+      const dayOfWeek = slot.day_of_week ?? slot.dayOfWeek
+      const startTime = slot.start_time ?? slot.startTime
+      const endTime = slot.end_time ?? slot.endTime
+      const maxAppt = slot.max_appointments ?? slot.maxAppointments ?? 1
+      insertSlot.run(doctorId, dayOfWeek, startTime, endTime, maxAppt)
     }
   })
   transaction()

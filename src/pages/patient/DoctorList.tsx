@@ -52,24 +52,28 @@ export default function DoctorList() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {doctors.map((doc) => (
-            <button
-              key={doc.id}
-              onClick={() => navigate(`/patient/schedule/${doc.id}`)}
-              className="group flex items-start gap-4 rounded-2xl border border-gray-100 bg-white p-5 text-left transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/10"
-            >
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary/10 font-serif text-lg font-semibold text-primary">
-                {doc.user?.name?.charAt(0) || '医'}
-              </div>
-              <div className="min-w-0 flex-1">
-                <h3 className="font-serif text-base font-semibold text-gray-800">
-                  {doc.user?.name || '医生'}
-                </h3>
-                <p className="mt-0.5 text-xs text-accent">{doc.title}</p>
-                <p className="mt-1 text-sm text-gray-500">{doc.specialty}</p>
-              </div>
-            </button>
-          ))}
+          {doctors.map((doc) => {
+            const docAny = doc as any
+            const doctorName = doc.user?.name || docAny.name || '医生'
+            return (
+              <button
+                key={doc.id}
+                onClick={() => navigate(`/patient/schedule/${doc.id}`)}
+                className="group flex items-start gap-4 rounded-2xl border border-gray-100 bg-white p-5 text-left transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/10"
+              >
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary/10 font-serif text-lg font-semibold text-primary">
+                  {doctorName.charAt(0)}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-serif text-base font-semibold text-gray-800">
+                    {doctorName}
+                  </h3>
+                  <p className="mt-0.5 text-xs text-accent">{doc.title}</p>
+                  <p className="mt-1 text-sm text-gray-500">{doc.specialty}</p>
+                </div>
+              </button>
+            )
+          })}
         </div>
       )}
     </div>

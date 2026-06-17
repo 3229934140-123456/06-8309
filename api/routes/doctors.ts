@@ -3,6 +3,22 @@ import db from '../db.js'
 
 const router = Router()
 
+router.get('/:id', (req: Request, res: Response): void => {
+  const { id } = req.params
+  const doctor = db.prepare(
+    `SELECT d.*, u.name, u.phone, dep.name as department_name, dep.id as department_id
+     FROM doctors d
+     JOIN users u ON d.user_id = u.id
+     JOIN departments dep ON d.department_id = dep.id
+     WHERE d.id = ?`
+  ).get(id)
+  if (!doctor) {
+    res.status(404).json({ success: false, error: '医生不存在' })
+    return
+  }
+  res.json({ success: true, data: doctor })
+})
+
 router.get('/:id/schedule', (req: Request, res: Response): void => {
   const { id } = req.params
   const slots = db.prepare(

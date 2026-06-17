@@ -26,7 +26,13 @@ export default function Register() {
     e.preventDefault()
     setError('')
     try {
-      await register(form.phone, form.password, form.name)
+      await register(form.phone, form.password, form.name, {
+        bloodType: form.bloodType,
+        allergies: form.allergies,
+        chronicDiseases: form.chronicDiseases,
+        emergencyContact: form.emergencyContact,
+        emergencyPhone: form.emergencyPhone,
+      })
       navigate('/patient')
     } catch (err) {
       setError(err instanceof Error ? err.message : '注册失败')
