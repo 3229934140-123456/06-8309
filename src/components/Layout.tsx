@@ -42,6 +42,7 @@ const doctorNav: NavItem[] = [
 
 const receptionNav: NavItem[] = [
   { label: '当日队列', icon: <Users size={20} />, path: '/reception' },
+  { label: '快速报到', icon: <QrCode size={20} />, path: '/reception/quick-checkin' },
   { label: '爽约管理', icon: <UserX size={20} />, path: '/reception/noshow' },
 ]
 

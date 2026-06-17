@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Calendar, Clock, User, Building2, Bell, XCircle, ArrowLeft, RefreshCw, AlertTriangle, CheckCircle, AlertCircle } from 'lucide-react'
+import { Calendar, Clock, User, Building2, Bell, XCircle, ArrowLeft, RefreshCw, AlertTriangle, CheckCircle, AlertCircle, QrCode } from 'lucide-react'
 import { api } from '@/utils/api'
+import { useNotificationStore } from '@/store/notificationStore'
 import type { Appointment, AppointmentStatus, Notification } from '@shared/types'
 
 const statusConfig: Record<AppointmentStatus, { label: string; color: string; bg: string }> = {
@@ -23,6 +24,7 @@ const checkInConfig: Record<AppointmentStatus, { label: string; icon: React.Reac
 export default function AppointmentDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { markAsRead } = useNotificationStore()
   const [appointment, setAppointment] = useState<Appointment | null>(null)
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
@@ -66,6 +68,17 @@ export default function AppointmentDetail() {
     }
   }
 
+  const handleNotificationClick = async (notification: Notification) => {
+    if (!notification.is_read) {
+      await markAsRead(notification.id)
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n.id === notification.id ? { ...n, is_read: true } : n
+        )
+      )
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center text-gray-400">
@@ -99,6 +112,9 @@ export default function AppointmentDetail() {
   const departmentName = (appointment as any).department_name || appointment.doctor?.department?.name || '科室'
   const startTime = (appointment as any).start_time || appointment.slot?.start_time || ''
   const endTime = (appointment as any).end_time || appointment.slot?.end_time || ''
+  const appointmentNo = (appointment as any).appointment_no || `APT${String(appointment.id).padStart(8, '0')}`
+  const patientName = (appointment as any).patient_name || appointment.patient?.name || '患者'
+  const patientPhone = (appointment as any).patient_phone || appointment.patient?.phone || ''
 
   return (
     <div className="space-y-6">
@@ -119,6 +135,10 @@ export default function AppointmentDetail() {
             <p className="mt-2 text-xs text-gray-400">
               创建于 {new Date(appointment.created_at).toLocaleString('zh-CN')}
             </p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-gray-400">预约号</p>
+            <p className="font-serif text-lg font-bold text-primary">{appointmentNo}</p>
           </div>
         </div>
 
@@ -180,6 +200,40 @@ export default function AppointmentDetail() {
 
       <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center gap-2">
+          <QrCode size={20} className="text-primary" />
+          <h2 className="font-serif text-lg font-semibold text-gray-800">到院凭证</h2>
+        </div>
+        <div className="flex flex-col items-center">
+          <div className="relative mb-4 flex h-48 w-48 items-center justify-center rounded-xl border-2 border-primary/20 bg-white p-3">
+            <div className="grid h-full w-full grid-cols-8 grid-rows-8 gap-0.5">
+              {Array.from({ length: 64 }).map((_, i) => {
+                const row = Math.floor(i / 8)
+                const col = i % 8
+                const isCorner = (row < 2 && col < 2) || (row < 2 && col >= 6) || (row >= 6 && col < 2)
+                const isPattern = (row + col) % 3 === 0 || (row * col) % 5 === 0
+                const showSquare = isCorner || isPattern
+                return (
+                  <div
+                    key={i}
+                    className={`rounded-sm ${showSquare ? 'bg-primary' : 'bg-transparent'}`}
+                  />
+                )
+              })}
+            </div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-white">
+                <QrCode size={28} className="text-primary" />
+              </div>
+            </div>
+          </div>
+          <p className="mb-1 font-serif text-lg font-semibold text-gray-800">{appointmentNo}</p>
+          <p className="text-sm text-gray-600">{patientName}</p>
+          {patientPhone && <p className="text-xs text-gray-400">{patientPhone}</p>}
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+        <div className="mb-4 flex items-center gap-2">
           <Bell size={20} className="text-primary" />
           <h2 className="font-serif text-lg font-semibold text-gray-800">通知记录</h2>
         </div>
@@ -188,12 +242,30 @@ export default function AppointmentDetail() {
         ) : (
           <div className="space-y-3">
             {notifications.map((n) => (
-              <div key={n.id} className="rounded-xl bg-warmwhite p-4">
+              <div
+                key={n.id}
+                onClick={() => handleNotificationClick(n)}
+                className={`cursor-pointer rounded-xl p-4 transition-colors hover:bg-mint/30 ${
+                  n.is_read ? 'bg-warmwhite' : 'bg-mint/20'
+                }`}
+              >
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-gray-800">{n.title}</p>
-                  <span className="text-[11px] text-gray-400">
-                    {new Date(n.created_at).toLocaleDateString('zh-CN')}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <p className={`text-sm font-medium ${n.is_read ? 'text-gray-600' : 'text-gray-800'}`}>
+                      {n.title}
+                    </p>
+                    {!n.is_read && (
+                      <span className="h-2 w-2 flex-shrink-0 rounded-full bg-primary" />
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {!n.is_read && (
+                      <span className="text-[10px] font-medium text-primary">未读</span>
+                    )}
+                    <span className="text-[11px] text-gray-400">
+                      {new Date(n.created_at).toLocaleDateString('zh-CN')}
+                    </span>
+                  </div>
                 </div>
                 <p className="mt-1 text-xs text-gray-500">{n.content}</p>
               </div>

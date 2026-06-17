@@ -33,19 +33,44 @@ const statusConfig: Record<AppointmentStatus, { label: string; className: string
   noshow: { label: '爽约', className: 'bg-red-50 text-red-700 border border-red-200' },
 }
 
+const statusFilters = [
+  { key: 'all', label: '全部' },
+  { key: 'pending', label: '待就诊' },
+  { key: 'checked_in', label: '已报到' },
+  { key: 'completed', label: '已完成' },
+  { key: 'cancelled', label: '已取消' },
+  { key: 'noshow', label: '爽约' },
+]
+
 export default function Queue() {
   const [appointments, setAppointments] = useState<QueueItem[]>([])
+  const [allAppointments, setAllAppointments] = useState<QueueItem[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
   const [actionLoading, setActionLoading] = useState<number | null>(null)
 
   const fetchQueue = useCallback(async () => {
     try {
       const isToday = selectedDate === format(new Date(), 'yyyy-MM-dd')
-      const endpoint = isToday
+      let endpoint = isToday
         ? '/reception/today-queue'
         : `/reception/appointments?date=${selectedDate}`
+      
+      const params = new URLSearchParams()
+      if (statusFilter && statusFilter !== 'all') {
+        params.append('status', statusFilter)
+      }
+      if (search.trim()) {
+        params.append('search', search.trim())
+      }
+      
+      const queryString = params.toString()
+      if (queryString) {
+        endpoint += (endpoint.includes('?') ? '&' : '?') + queryString
+      }
+      
       const data = await api.get<QueueItem[]>(endpoint)
       setAppointments(data)
     } catch {
@@ -53,23 +78,39 @@ export default function Queue() {
     } finally {
       setLoading(false)
     }
+  }, [selectedDate, statusFilter, search])
+
+  const fetchAllForStats = useCallback(async () => {
+    try {
+      const isToday = selectedDate === format(new Date(), 'yyyy-MM-dd')
+      const endpoint = isToday
+        ? '/reception/today-queue'
+        : `/reception/appointments?date=${selectedDate}`
+      const data = await api.get<QueueItem[]>(endpoint)
+      setAllAppointments(data)
+    } catch {
+      console.error('获取统计数据失败')
+    }
   }, [selectedDate])
 
   useEffect(() => {
     setLoading(true)
-    fetchQueue()
-  }, [fetchQueue])
+    Promise.all([fetchQueue(), fetchAllForStats()])
+  }, [fetchQueue, fetchAllForStats])
 
   useEffect(() => {
-    const timer = setInterval(fetchQueue, 30000)
+    const timer = setInterval(() => {
+      fetchQueue()
+      fetchAllForStats()
+    }, 30000)
     return () => clearInterval(timer)
-  }, [fetchQueue])
+  }, [fetchQueue, fetchAllForStats])
 
   const handleAction = async (id: number, action: 'checkin' | 'noshow') => {
     setActionLoading(id)
     try {
       await api.patch(`/appointments/${id}/${action}`)
-      await fetchQueue()
+      await Promise.all([fetchQueue(), fetchAllForStats()])
     } catch (err) {
       alert((err as Error).message || '操作失败')
     } finally {
@@ -77,18 +118,14 @@ export default function Queue() {
     }
   }
 
-  const filtered = appointments.filter((a) =>
-    a.patient_name.includes(search.trim()),
-  )
-
   const stats = {
-    total: filtered.length,
-    checkedIn: filtered.filter((a) => a.status === 'checked_in').length,
-    pending: filtered.filter((a) => a.status === 'pending').length,
-    noshow: filtered.filter((a) => a.status === 'noshow').length,
+    total: allAppointments.length,
+    checkedIn: allAppointments.filter((a) => a.status === 'checked_in').length,
+    pending: allAppointments.filter((a) => a.status === 'pending').length,
+    noshow: allAppointments.filter((a) => a.status === 'noshow').length,
   }
 
-  const grouped = filtered.reduce<Record<string, QueueItem[]>>((acc, item) => {
+  const grouped = appointments.reduce<Record<string, QueueItem[]>>((acc, item) => {
     const slot = `${item.start_time}-${item.end_time}`
     ;(acc[slot] ??= []).push(item)
     return acc
@@ -145,10 +182,26 @@ export default function Queue() {
         ))}
       </div>
 
+      <div className="flex flex-wrap gap-2">
+        {statusFilters.map((filter) => (
+          <button
+            key={filter.key}
+            onClick={() => setStatusFilter(filter.key)}
+            className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+              statusFilter === filter.key
+                ? 'bg-primary text-white'
+                : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+            }`}
+          >
+            {filter.label}
+          </button>
+        ))}
+      </div>
+
       <div className="relative">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
-          placeholder="搜索患者姓名..."
+          placeholder="搜索患者姓名、手机号或预约号..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full rounded-lg border border-gray-200 py-2.5 pl-9 pr-4 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
@@ -160,7 +213,7 @@ export default function Queue() {
           <RefreshCw size={20} className="animate-spin" />
           <span className="ml-2">加载中...</span>
         </div>
-      ) : filtered.length === 0 ? (
+      ) : appointments.length === 0 ? (
         <div className="flex h-40 flex-col items-center justify-center text-gray-400">
           <Users size={40} className="mb-2 opacity-40" />
           <p>暂无预约记录</p>
@@ -233,6 +286,16 @@ export default function Queue() {
                           {apt.status === 'completed' && (
                             <span className="inline-block rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700">
                               已完成
+                            </span>
+                          )}
+                          {apt.status === 'cancelled' && (
+                            <span className="inline-block rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-500">
+                              已取消
+                            </span>
+                          )}
+                          {apt.status === 'noshow' && (
+                            <span className="inline-block rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700">
+                              爽约
                             </span>
                           )}
                         </td>

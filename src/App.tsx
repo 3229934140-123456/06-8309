@@ -107,6 +107,7 @@ function AppRoutes() {
         }
       >
         <Route index element={<Queue />} />
+        <Route path="quick-checkin" element={<QuickCheckin />} />
         <Route path="noshow" element={<NoShow />} />
       </Route>
 

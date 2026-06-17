@@ -37,9 +37,23 @@ router.post('/', (req: Request, res: Response): void => {
     return
   }
 
+  const dateStr = appointmentDate.replace(/-/g, '')
+  const prefix = 'YY' + dateStr
+  const maxNoResult = db.prepare(
+    'SELECT MAX(appointment_no) as max_no FROM appointments WHERE appointment_date = ?'
+  ).get(appointmentDate) as { max_no: string | null }
+  let sequence = 1
+  if (maxNoResult.max_no) {
+    const lastSeq = parseInt(maxNoResult.max_no.slice(prefix.length), 10)
+    if (!isNaN(lastSeq)) {
+      sequence = lastSeq + 1
+    }
+  }
+  const appointmentNo = prefix + String(sequence).padStart(3, '0')
+
   const result = db.prepare(
-    'INSERT INTO appointments (patient_id, doctor_id, slot_id, appointment_date) VALUES (?, ?, ?, ?)'
-  ).run(userId, doctorId, slotId, appointmentDate)
+    'INSERT INTO appointments (patient_id, doctor_id, slot_id, appointment_date, appointment_no) VALUES (?, ?, ?, ?, ?)'
+  ).run(userId, doctorId, slotId, appointmentDate, appointmentNo)
 
   const doctor = db.prepare(
     'SELECT u.name FROM doctors d JOIN users u ON d.user_id = u.id WHERE d.id = ?'
@@ -73,9 +87,11 @@ router.get('/mine', (req: Request, res: Response): void => {
 })
 
 router.get('/:id', (req: Request, res: Response): void => {
+  const userId = (req as any).userId
+  const userRole = (req as any).userRole
   const { id } = req.params
   const appointment = db.prepare(
-    `SELECT a.*, u.name as patient_name, doc.id as doctor_table_id, doc.title as doctor_title,
+    `SELECT a.*, u.name as patient_name, doc.id as doctor_table_id, doc.user_id as doctor_user_id, doc.title as doctor_title,
      s.start_time, s.end_time, s.day_of_week,
      du.name as doctor_name, dep.name as department_name
      FROM appointments a
@@ -90,6 +106,19 @@ router.get('/:id', (req: Request, res: Response): void => {
     res.status(404).json({ success: false, error: '预约不存在' })
     return
   }
+
+  if (userRole === 'patient') {
+    if (appointment.patient_id !== userId) {
+      res.status(403).json({ success: false, error: '无权查看此预约' })
+      return
+    }
+  } else if (userRole === 'doctor') {
+    if (appointment.doctor_user_id !== userId) {
+      res.status(403).json({ success: false, error: '无权查看此预约' })
+      return
+    }
+  }
+
   res.json({ success: true, data: appointment })
 })
 
@@ -110,6 +139,15 @@ router.delete('/:id', (req: Request, res: Response): void => {
     return
   }
   db.prepare("UPDATE appointments SET status = 'cancelled' WHERE id = ?").run(id)
+
+  createNotification(
+    appointment.patient_id,
+    'system',
+    '预约已取消',
+    `您的${appointment.appointment_date}预约已取消`,
+    Number(id)
+  )
+
   res.json({ success: true, message: '取消成功' })
 })
 

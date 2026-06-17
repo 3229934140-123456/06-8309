@@ -8,9 +8,14 @@ import type { Appointment } from '@shared/types'
 export default function WaitingList() {
   const { doctor, loading: doctorLoading } = useDoctorProfile()
   const navigate = useNavigate()
-  const [appointments, setAppointments] = useState<Appointment[]>([])
+  const [allAppointments, setAllAppointments] = useState<Appointment[]>([])
+  const [showOnlyCheckedIn, setShowOnlyCheckedIn] = useState(true)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
+
+  const appointments = showOnlyCheckedIn
+    ? allAppointments.filter((a) => a.status === 'checked_in')
+    : allAppointments
 
   const fetchAppointments = useCallback(async () => {
     if (!doctor) return
@@ -29,11 +34,14 @@ export default function WaitingList() {
         patient: { id: a.patient_id, name: a.patient_name, phone: a.patient_phone, role: 'patient' as const, created_at: '' },
         slot: { id: a.slot_id, doctor_id: a.doctor_id, day_of_week: a.day_of_week, start_time: a.start_time, end_time: a.end_time, max_appointments: a.max_appointments },
       }))
-      const checkedIn = mapped.filter((a) => a.status === 'checked_in')
-      setAppointments(checkedIn)
-      if (checkedIn.length > 0 && !selectedId) {
-        setSelectedId(checkedIn[0].id)
-      }
+      setAllAppointments(mapped)
+      setSelectedId((prevId) => {
+        const checkedIn = mapped.filter((a) => a.status === 'checked_in')
+        if (checkedIn.length > 0 && !prevId) {
+          return checkedIn[0].id
+        }
+        return prevId
+      })
     } catch {
     } finally {
       setLoading(false)
@@ -58,21 +66,33 @@ export default function WaitingList() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <h1 className="font-serif text-2xl font-semibold text-gray-800">候诊列表</h1>
           <span className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
             <Users size={14} />
-            当前候诊 {appointments.length} 人
+            {showOnlyCheckedIn ? `当前候诊 ${appointments.length} 人` : `全部预约 ${appointments.length} 人`}
           </span>
         </div>
-        <button
-          onClick={fetchAppointments}
-          className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
-        >
-          <RefreshCw size={14} />
-          刷新
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowOnlyCheckedIn(!showOnlyCheckedIn)}
+            className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+              showOnlyCheckedIn
+                ? 'border-primary bg-primary text-white'
+                : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            {showOnlyCheckedIn ? '只看已报到' : '显示全部'}
+          </button>
+          <button
+            onClick={fetchAppointments}
+            className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
+          >
+            <RefreshCw size={14} />
+            刷新
+          </button>
+        </div>
       </div>
 
       {appointments.length === 0 ? (
@@ -80,8 +100,12 @@ export default function WaitingList() {
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-mint">
             <UserRound size={28} className="text-primary" />
           </div>
-          <p className="font-serif text-lg text-gray-500">暂无候诊患者</p>
-          <p className="mt-1 text-sm text-gray-400">当前没有已签到的患者</p>
+          <p className="font-serif text-lg text-gray-500">
+            {showOnlyCheckedIn ? '暂无候诊患者' : '暂无预约'}
+          </p>
+          <p className="mt-1 text-sm text-gray-400">
+            {showOnlyCheckedIn ? '当前没有已签到的患者' : '当前没有预约记录'}
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -104,12 +128,29 @@ export default function WaitingList() {
                         : 'bg-gray-100 text-gray-500'
                     }`}
                   >
-                    {index + 1}
+                    {showOnlyCheckedIn ? index + 1 : (apt.status === 'checked_in' ? '✓' : '○')}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="truncate text-sm font-medium text-gray-800">
-                      {apt.patient?.name || `患者 #${apt.patient_id}`}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-sm font-medium text-gray-800">
+                        {apt.patient?.name || `患者 #${apt.patient_id}`}
+                      </p>
+                      {!showOnlyCheckedIn && (
+                        <span className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                          apt.status === 'checked_in'
+                            ? 'bg-amber-100 text-amber-700'
+                            : apt.status === 'completed'
+                            ? 'bg-green-100 text-green-700'
+                            : apt.status === 'cancelled'
+                            ? 'bg-gray-100 text-gray-500'
+                            : apt.status === 'noshow'
+                            ? 'bg-red-100 text-red-700'
+                            : 'bg-blue-100 text-blue-700'
+                        }`}>
+                          {apt.status === 'checked_in' ? '已报到' : apt.status === 'completed' ? '已完成' : apt.status === 'cancelled' ? '已取消' : apt.status === 'noshow' ? '爽约' : '待就诊'}
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-1.5 text-xs text-gray-500">
                       <Clock size={12} />
                       <span>
@@ -148,21 +189,35 @@ export default function WaitingList() {
                   </div>
                   <div className="rounded-xl bg-warmwhite p-4">
                     <p className="text-xs text-gray-500">签到状态</p>
-                    <p className="mt-1 text-sm font-medium text-primary">已签到</p>
+                    <p className={`mt-1 text-sm font-medium ${
+                      selected.status === 'checked_in' ? 'text-amber-600' :
+                      selected.status === 'completed' ? 'text-green-600' :
+                      selected.status === 'cancelled' ? 'text-gray-500' :
+                      selected.status === 'noshow' ? 'text-red-600' :
+                      'text-blue-600'
+                    }`}>
+                      {selected.status === 'checked_in' ? '已签到' :
+                       selected.status === 'completed' ? '已完成' :
+                       selected.status === 'cancelled' ? '已取消' :
+                       selected.status === 'noshow' ? '爽约' :
+                       '待就诊'}
+                    </p>
                   </div>
                 </div>
 
-                <button
-                  onClick={() =>
-                    navigate(`/doctor/consultation/${selected.id}`, {
-                      state: { appointment: selected },
-                    })
-                  }
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-primary/90"
-                >
-                  <Stethoscope size={18} />
-                  开始接诊
-                </button>
+                {selected.status === 'checked_in' && (
+                  <button
+                    onClick={() =>
+                      navigate(`/doctor/consultation/${selected.id}`, {
+                        state: { appointment: selected },
+                      })
+                    }
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+                  >
+                    <Stethoscope size={18} />
+                    开始接诊
+                  </button>
+                )}
               </div>
             )}
           </div>

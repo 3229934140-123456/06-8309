@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from 'express'
 import db from '../db.js'
 import { authMiddleware } from '../middleware/auth.js'
+import { createNotification } from './notifications.js'
 
 const router = Router()
 
@@ -45,6 +46,15 @@ router.post('/', (req: Request, res: Response): void => {
   const consultationId = transaction()
   const consultation = db.prepare('SELECT * FROM consultations WHERE id = ?').get(consultationId) as any
   const prescs = db.prepare('SELECT * FROM prescriptions WHERE consultation_id = ?').all(consultationId)
+
+  createNotification(
+    patient_id,
+    'system',
+    '就诊完成',
+    '您的本次就诊已完成，可在就诊记录中查看诊断和处方',
+    appointment_id
+  )
+
   res.status(201).json({ success: true, data: { ...consultation, prescriptions: prescs } })
 })
 
