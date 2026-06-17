@@ -12,7 +12,7 @@ router.get('/today-queue', (_req: Request, res: Response): void => {
   const queue = db.prepare(
     `SELECT a.id, a.appointment_date, a.status, a.created_at,
        p.name as patient_name, p.phone as patient_phone,
-       u.name as doctor_name, d.title as doctor_title, dep.name as department_name,
+       u.name as doctor_name, doc.title as doctor_title, dep.name as department_name,
        s.start_time, s.end_time
      FROM appointments a
      JOIN users p ON a.patient_id = p.id
@@ -35,7 +35,7 @@ router.get('/appointments', (req: Request, res: Response): void => {
   const appointments = db.prepare(
     `SELECT a.id, a.appointment_date, a.status, a.created_at,
        p.name as patient_name, p.phone as patient_phone,
-       u.name as doctor_name, d.title as doctor_title, dep.name as department_name,
+       u.name as doctor_name, doc.title as doctor_title, dep.name as department_name,
        s.start_time, s.end_time
      FROM appointments a
      JOIN users p ON a.patient_id = p.id

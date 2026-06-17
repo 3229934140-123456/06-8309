@@ -29,7 +29,10 @@ router.get('/:id/schedule', (req: Request, res: Response): void => {
 
 router.get('/:id/appointments', (req: Request, res: Response): void => {
   const { id } = req.params
-  const { date } = req.query
+  let { date } = req.query
+  if (date === 'today') {
+    date = new Date().toISOString().slice(0, 10)
+  }
   const appointments = db.prepare(
     `SELECT a.*, u.name as patient_name, u.phone as patient_phone,
      s.start_time, s.end_time, s.day_of_week, s.max_appointments

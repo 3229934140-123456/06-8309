@@ -1,5 +1,7 @@
-import { CheckCircle, Bell, Info, X } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { CheckCircle, Bell, Info, X, ChevronRight } from 'lucide-react'
 import { useNotificationStore } from '@/store/notificationStore'
+import { useAuthStore } from '@/store/authStore'
 import type { NotificationType } from '@shared/types'
 
 interface NotificationPanelProps {
@@ -14,7 +16,17 @@ const iconMap: Record<NotificationType, React.ReactNode> = {
 }
 
 export default function NotificationPanel({ open, onClose }: NotificationPanelProps) {
+  const navigate = useNavigate()
+  const { user } = useAuthStore()
   const { notifications, markAsRead } = useNotificationStore()
+
+  const handleNotificationClick = async (n: { id: number; appointment_id?: number }) => {
+    await markAsRead(n.id)
+    if (n.appointment_id && user?.role === 'patient') {
+      navigate(`/patient/appointments/${n.appointment_id}`)
+    }
+    onClose()
+  }
 
   return (
     <>
@@ -49,8 +61,8 @@ export default function NotificationPanel({ open, onClose }: NotificationPanelPr
               {notifications.map((n) => (
                 <li
                   key={n.id}
-                  onClick={() => !n.is_read && markAsRead(n.id)}
-                  className={`flex cursor-pointer gap-3 border-b border-gray-50 px-6 py-4 transition-colors hover:bg-gray-50 ${
+                  onClick={() => handleNotificationClick(n)}
+                  className={`flex cursor-pointer items-center gap-3 border-b border-gray-50 px-6 py-4 transition-colors hover:bg-gray-50 ${
                     !n.is_read ? 'bg-mint/40' : ''
                   }`}
                 >
@@ -71,6 +83,7 @@ export default function NotificationPanel({ open, onClose }: NotificationPanelPr
                       {new Date(n.created_at).toLocaleString('zh-CN')}
                     </p>
                   </div>
+                  <ChevronRight size={16} className="flex-shrink-0 text-gray-300" />
                 </li>
               ))}
             </ul>

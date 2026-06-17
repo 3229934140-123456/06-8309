@@ -49,7 +49,8 @@ router.post('/', (req: Request, res: Response): void => {
     userId,
     'confirmation',
     '预约成功',
-    `您已成功预约${doctor?.name || '医生'}，日期：${appointmentDate}`
+    `您已成功预约${doctor?.name || '医生'}，日期：${appointmentDate}`,
+    result.lastInsertRowid
   )
 
   const appointment = db.prepare('SELECT * FROM appointments WHERE id = ?').get(result.lastInsertRowid)
@@ -59,7 +60,7 @@ router.post('/', (req: Request, res: Response): void => {
 router.get('/mine', (req: Request, res: Response): void => {
   const userId = (req as any).userId
   const appointments = db.prepare(
-    `SELECT a.*, u.name as doctor_name, d.title as doctor_title, dep.name as department_name, s.start_time, s.end_time, s.day_of_week
+    `SELECT a.*, u.name as doctor_name, doc.title as doctor_title, dep.name as department_name, s.start_time, s.end_time, s.day_of_week
      FROM appointments a
      JOIN doctors doc ON a.doctor_id = doc.id
      JOIN users u ON doc.user_id = u.id
@@ -74,7 +75,7 @@ router.get('/mine', (req: Request, res: Response): void => {
 router.get('/:id', (req: Request, res: Response): void => {
   const { id } = req.params
   const appointment = db.prepare(
-    `SELECT a.*, u.name as patient_name, doc.id as doctor_table_id,
+    `SELECT a.*, u.name as patient_name, doc.id as doctor_table_id, doc.title as doctor_title,
      s.start_time, s.end_time, s.day_of_week,
      du.name as doctor_name, dep.name as department_name
      FROM appointments a
@@ -174,7 +175,8 @@ router.patch('/:id/noshow', (req: Request, res: Response): void => {
       appointment.patient_id,
       'system',
       '预约限制通知',
-      `您因连续${result.consecutive}次爽约，已被禁止预约30天`
+      `您因连续${result.consecutive}次爽约，已被禁止预约30天`,
+      Number(id)
     )
   }
 

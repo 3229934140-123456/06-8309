@@ -27,10 +27,10 @@ router.patch('/:id/read', (req: Request, res: Response): void => {
   res.json({ success: true, message: '已标记为已读' })
 })
 
-export function createNotification(userId: number, type: string, title: string, content: string): void {
+export function createNotification(userId: number, type: string, title: string, content: string, appointmentId?: number): void {
   db.prepare(
-    'INSERT INTO notifications (user_id, type, title, content) VALUES (?, ?, ?, ?)'
-  ).run(userId, type, title, content)
+    'INSERT INTO notifications (user_id, type, title, content, appointment_id) VALUES (?, ?, ?, ?, ?)'
+  ).run(userId, type, title, content, appointmentId ?? null)
 }
 
 export default router

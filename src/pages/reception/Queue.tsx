@@ -25,11 +25,6 @@ interface QueueItem {
   created_at: string
 }
 
-interface ApiResponse {
-  success: boolean
-  data: QueueItem[]
-}
-
 const statusConfig: Record<AppointmentStatus, { label: string; className: string }> = {
   pending: { label: '待就诊', className: 'bg-blue-50 text-blue-700 border border-blue-200' },
   checked_in: { label: '已报到', className: 'bg-amber-50 text-amber-700 border border-amber-200' },
@@ -51,8 +46,8 @@ export default function Queue() {
       const endpoint = isToday
         ? '/reception/today-queue'
         : `/reception/appointments?date=${selectedDate}`
-      const res = await api.get<ApiResponse>(endpoint)
-      if (res.success) setAppointments(res.data)
+      const data = await api.get<QueueItem[]>(endpoint)
+      setAppointments(data)
     } catch {
       console.error('获取队列失败')
     } finally {

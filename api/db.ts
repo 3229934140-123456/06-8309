@@ -117,7 +117,7 @@ const createTableSQLs = [
   `CREATE TABLE IF NOT EXISTS health_profiles (id INTEGER PRIMARY KEY AUTOINCREMENT, patient_id INTEGER NOT NULL UNIQUE, blood_type TEXT, allergies TEXT DEFAULT '[]', chronic_diseases TEXT DEFAULT '[]', emergency_contact TEXT, emergency_phone TEXT)`,
   `CREATE TABLE IF NOT EXISTS consultations (id INTEGER PRIMARY KEY AUTOINCREMENT, appointment_id INTEGER NOT NULL UNIQUE, patient_id INTEGER NOT NULL, doctor_id INTEGER NOT NULL, chief_complaint TEXT, diagnosis TEXT, notes TEXT, created_at TEXT DEFAULT (datetime('now')))`,
   `CREATE TABLE IF NOT EXISTS prescriptions (id INTEGER PRIMARY KEY AUTOINCREMENT, consultation_id INTEGER NOT NULL, medicine_name TEXT NOT NULL, dosage TEXT, frequency TEXT, duration_days INTEGER, remarks TEXT)`,
-  `CREATE TABLE IF NOT EXISTS notifications (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, type TEXT NOT NULL, title TEXT NOT NULL, content TEXT NOT NULL, is_read INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')))`,
+  `CREATE TABLE IF NOT EXISTS notifications (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, type TEXT NOT NULL, title TEXT NOT NULL, content TEXT NOT NULL, appointment_id INTEGER, is_read INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')))`,
   `CREATE TABLE IF NOT EXISTS noshow_records (id INTEGER PRIMARY KEY AUTOINCREMENT, patient_id INTEGER NOT NULL, appointment_id INTEGER NOT NULL, consecutive_count INTEGER DEFAULT 1, is_banned INTEGER DEFAULT 0, banned_until TEXT, created_at TEXT DEFAULT (datetime('now')))`,
 ]
 

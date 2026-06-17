@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { CalendarCheck, Clock, User, Building2, XCircle, CheckCircle, AlertTriangle } from 'lucide-react'
 import { api } from '@/utils/api'
 import type { Appointment, AppointmentStatus } from '@shared/types'
@@ -12,6 +13,7 @@ const statusConfig: Record<AppointmentStatus, { label: string; color: string; bg
 }
 
 export default function Appointments() {
+  const navigate = useNavigate()
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(true)
   const [cancellingId, setCancellingId] = useState<number | null>(null)
@@ -37,7 +39,8 @@ export default function Appointments() {
     }
   }
 
-  const handleCancel = async (id: number) => {
+  const handleCancel = async (e: React.MouseEvent, id: number) => {
+    e.stopPropagation()
     setCancellingId(id)
     try {
       await api.del(`/appointments/${id}`)
@@ -79,8 +82,17 @@ export default function Appointments() {
         <div className="space-y-4">
           {appointments.map((apt) => {
             const cfg = statusConfig[apt.status]
+            const doctorName = (apt as any).doctor_name || apt.doctor?.user?.name || '医生'
+            const doctorTitle = (apt as any).doctor_title || apt.doctor?.title || ''
+            const departmentName = (apt as any).department_name || apt.doctor?.department?.name || '科室'
+            const startTime = (apt as any).start_time || apt.slot?.start_time || ''
+            const endTime = (apt as any).end_time || apt.slot?.end_time || ''
             return (
-              <div key={apt.id} className="relative rounded-2xl bg-white p-5 shadow-sm">
+              <div
+                key={apt.id}
+                onClick={() => navigate(`/patient/appointments/${apt.id}`)}
+                className="relative cursor-pointer rounded-2xl bg-white p-5 shadow-sm transition-colors hover:bg-mint/30"
+              >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <div className="mb-2 flex items-center gap-2">
@@ -95,25 +107,21 @@ export default function Appointments() {
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2 text-sm">
                         <User size={14} className="text-gray-400" />
-                        <span className="font-medium text-gray-800">
-                          {apt.doctor?.user?.name || '医生'}
-                        </span>
-                        <span className="text-xs text-gray-400">
-                          {apt.doctor?.title}
-                        </span>
+                        <span className="font-medium text-gray-800">{doctorName}</span>
+                        <span className="text-xs text-gray-400">{doctorTitle}</span>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-500">
                         <Building2 size={14} className="text-gray-400" />
-                        <span>{apt.doctor?.department?.name || '科室'}</span>
+                        <span>{departmentName}</span>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-500">
                         <CalendarCheck size={14} className="text-gray-400" />
                         <span>{apt.appointment_date}</span>
                       </div>
-                      {apt.slot && (
+                      {(startTime || endTime) && (
                         <div className="flex items-center gap-2 text-sm text-gray-500">
                           <Clock size={14} className="text-gray-400" />
-                          <span>{apt.slot.start_time} - {apt.slot.end_time}</span>
+                          <span>{startTime} - {endTime}</span>
                         </div>
                       )}
                     </div>
@@ -121,7 +129,7 @@ export default function Appointments() {
 
                   {apt.status === 'pending' && (
                     <button
-                      onClick={() => handleCancel(apt.id)}
+                      onClick={(e) => handleCancel(e, apt.id)}
                       disabled={cancellingId === apt.id}
                       className="flex shrink-0 items-center gap-1 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-500 transition-colors hover:bg-red-50 disabled:opacity-50"
                     >

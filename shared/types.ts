@@ -94,6 +94,7 @@ export interface Notification {
   content: string
   is_read: boolean
   created_at: string
+  appointment_id?: number
 }
 
 export interface NoShowRecord {

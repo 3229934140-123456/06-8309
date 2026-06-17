@@ -8,6 +8,7 @@ import Departments from '@/pages/patient/Departments'
 import DoctorList from '@/pages/patient/DoctorList'
 import ScheduleView from '@/pages/patient/ScheduleView'
 import Appointments from '@/pages/patient/Appointments'
+import AppointmentDetail from '@/pages/patient/AppointmentDetail'
 import Records from '@/pages/patient/Records'
 import RecordDetail from '@/pages/patient/RecordDetail'
 import Profile from '@/pages/patient/Profile'
@@ -77,6 +78,7 @@ function AppRoutes() {
         <Route path="doctors/:deptId" element={<DoctorList />} />
         <Route path="schedule/:doctorId" element={<ScheduleView />} />
         <Route path="appointments" element={<Appointments />} />
+        <Route path="appointments/:id" element={<AppointmentDetail />} />
         <Route path="records" element={<Records />} />
         <Route path="records/:id" element={<RecordDetail />} />
         <Route path="profile" element={<Profile />} />
